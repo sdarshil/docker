@@ -1,0 +1,56 @@
+- hosts: localhost
+  vars_prompt:
+    - name: con_name
+      private: no
+      prompt: "Enter Container Name"
+
+    - name: host_port
+      private: no
+      prompt: "Emter Host Port"
+
+  tasks:
+  - name: Configure YUM repo for docker
+    yum_repository:
+      name: docker
+      description: YUM repository for docker
+      baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+      gpgcheck: no
+
+      
+  - name: Install docker-ce
+    command: "yum install docker-ce --nobest -y"
+  - name: start docker service
+    service:
+      name: docker
+      state: started
+      enabled: yes
+
+  - name: Create a directory to attach with container
+    file:
+      path: /root/docker-web
+      state: directory
+ 
+  - name: Copy content of webpage to the directory
+    copy:
+      content: "This is a webpage on docker container\n"
+      dest: /root/docker-web/index.html
+
+  - name: Pull httpd image
+    docker_image:
+      name: sdarshil/web:v1
+      source: pull
+
+  - name: Launch docker container with httpd image
+    docker_container:
+      name: "{{ con_name }}"
+      image: httpd
+      volumes:
+        - /root/docker-web:/usr/local/apache2/htdocs/
+      ports:
+        - "{{ host_port }}:80"
+      state: started
+
+  - name: Stop firewall to allow all traffic
+    service: 
+      name: firewalld
+      state: stopped
